@@ -15,6 +15,7 @@
 #include "engine/surface_load.h"
 #include "game_init.h"
 #include "geo_misc.h"
+#include "ingame_menu.h"
 #include "interaction.h"
 #include "level_table.h"
 #include "level_update.h"
@@ -69,7 +70,6 @@ extern struct Object *sMasterTreadmill;
  */
 struct Object *sMasterTreadmill;
 
-
 f32 sObjSavedPosX;
 f32 sObjSavedPosY;
 f32 sObjSavedPosZ;
@@ -98,10 +98,11 @@ static s16 obj_get_pitch_from_vel(void) {
  */
 static s32 obj_update_race_proposition_dialog(s16 dialogID) {
     s32 dialogResponse =
-        cur_obj_update_dialog_with_cutscene(2, DIALOG_UNK2_FLAG_0 | DIALOG_UNK2_LEAVE_TIME_STOP_ENABLED, CUTSCENE_RACE_DIALOG, dialogID);
+        cur_obj_update_dialog_with_cutscene(MARIO_DIALOG_LOOK_UP,
+        (DIALOG_FLAG_TURN_TO_MARIO | DIALOG_FLAG_TIME_STOP_ENABLED), CUTSCENE_RACE_DIALOG, dialogID);
 
-    if (dialogResponse == 2) {
-        set_mario_npc_dialog(0);
+    if (dialogResponse == DIALOG_RESPONSE_NO) {
+        set_mario_npc_dialog(MARIO_DIALOG_STOP);
         disable_time_stop_including_mario();
     }
 
@@ -150,14 +151,14 @@ static void platform_on_track_update_pos_or_spawn_ball(s32 ballIndex, f32 x, f32
     struct Waypoint *initialPrevWaypoint;
     struct Waypoint *nextWaypoint;
     struct Waypoint *prevWaypoint;
-    UNUSED s32 unused;
+    UNUSED u8 filler[4];
     f32 amountToMove;
     f32 dx;
     f32 dy;
     f32 dz;
     f32 distToNextWaypoint;
 
-    if (ballIndex == 0 || ((u16)(o->oBehParams >> 16) & 0x0080)) {
+    if (ballIndex == 0 || ((u16)(o->oBhvParams >> 16) & 0x0080)) {
         initialPrevWaypoint = o->oPlatformOnTrackPrevWaypoint;
         nextWaypoint = initialPrevWaypoint;
 
@@ -172,13 +173,13 @@ static void platform_on_track_update_pos_or_spawn_ball(s32 ballIndex, f32 x, f32
         do {
             prevWaypoint = nextWaypoint;
 
-            nextWaypoint += 1;
+            nextWaypoint++;
             if (nextWaypoint->flags == WAYPOINT_FLAGS_END) {
                 if (ballIndex == 0) {
                     o->oPlatformOnTrackPrevWaypointFlags = WAYPOINT_FLAGS_END;
                 }
 
-                if (((u16)(o->oBehParams >> 16) & PLATFORM_ON_TRACK_BP_RETURN_TO_START)) {
+                if (((u16)(o->oBhvParams >> 16) & PLATFORM_ON_TRACK_BP_RETURN_TO_START)) {
                     nextWaypoint = o->oPlatformOnTrackStartWaypoint;
                 } else {
                     return;
@@ -533,7 +534,7 @@ static s32 oscillate_toward(s32 *value, f32 *vel, s32 target, f32 velCloseToZero
 static void obj_update_blinking(s32 *blinkTimer, s16 baseCycleLength, s16 cycleLengthRange,
                                 s16 blinkLength) {
     if (*blinkTimer != 0) {
-        *blinkTimer -= 1;
+        (*blinkTimer)--;
     } else {
         *blinkTimer = random_linear_offset(baseCycleLength, cycleLengthRange);
     }
@@ -623,8 +624,8 @@ static void obj_die_if_health_non_positive(void) {
             spawn_mist_particles();
         }
 
-        if ((s32)o->oNumLootCoins < 0) {
-            spawn_object(o, MODEL_BLUE_COIN, bhvMrIBlueCoin);
+        if (o->oNumLootCoins < 0) {
+            spawn_object(o, MODEL_BLUE_COIN, bhvSpawnedBlueCoin);
         } else {
             obj_spawn_loot_yellow_coins(o, o->oNumLootCoins, 20.0f);
         }
@@ -640,7 +641,7 @@ static void obj_die_if_health_non_positive(void) {
     }
 }
 
-static void obj_unused_die(void) {
+UNUSED static void obj_unused_die(void) {
     o->oHealth = 0;
     obj_die_if_health_non_positive();
 }
@@ -785,7 +786,7 @@ static void obj_act_squished(f32 baseScale) {
     if (approach_f32_ptr(&o->header.gfx.scale[1], targetScaleY, baseScale * 0.14f)) {
         o->header.gfx.scale[0] = o->header.gfx.scale[2] = baseScale * 2.0f - o->header.gfx.scale[1];
 
-        if (o->oTimer >= 16) {
+        if (o->oTimer > 15) {
             obj_die_if_health_non_positive();
         }
     }

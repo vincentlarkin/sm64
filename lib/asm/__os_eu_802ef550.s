@@ -1,12 +1,11 @@
-.set noreorder # don't insert nops after branches
-.set gp=64
 .set noat
+.set noreorder // don't insert nops after branches
 
-.include "macros.inc"
+#include "macros.inc"
 
 
 .section .text, "ax"
-# cache related
+// cache related
 glabel __os_eu_802ef550
     lui     $t0,0x8000
     li      $t2,0x2000

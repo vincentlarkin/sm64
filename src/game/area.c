@@ -21,6 +21,7 @@
 #include "engine/geo_layout.h"
 #include "save_file.h"
 #include "level_table.h"
+#include "dialog_ids.h"
 
 struct SpawnInfo gPlayerSpawnInfos[1];
 struct GraphNode *D_8033A160[0x100];
@@ -32,7 +33,7 @@ s16 gCurrCourseNum;
 s16 gCurrActNum;
 s16 gCurrAreaIndex;
 s16 gSavedCourseNum;
-s16 gPauseScreenMode;
+s16 gMenuOptSelectIndex;
 s16 gSaveOptSelectIndex;
 
 struct SpawnInfo *gMarioSpawnInfo = &gPlayerSpawnInfos[0];
@@ -105,10 +106,13 @@ void set_warp_transition_rgb(u8 red, u8 green, u8 blue) {
 }
 
 void print_intro_text(void) {
+#ifdef VERSION_CN
+    u8 sp18[] = { 0xB0, 0x00 }; // TODO: iQue colorful text
+#endif
 #ifdef VERSION_EU
     s32 language = eu_get_language();
 #endif
-    if ((gGlobalTimer & 0x1F) < 20) {
+    if ((gGlobalTimer & 31) < 20) {
         if (gControllerBits == 0) {
 #ifdef VERSION_EU
             print_text_centered(SCREEN_WIDTH / 2, 20, gNoControllerMsg[language]);
@@ -119,7 +123,11 @@ void print_intro_text(void) {
 #ifdef VERSION_EU
             print_text(20, 20, "START");
 #else
+#ifdef VERSION_CN
+            print_text_centered(60, 38, (char *) sp18);
+#else
             print_text_centered(60, 38, "PRESS");
+#endif
             print_text_centered(60, 20, "START");
 #endif
         }
@@ -131,7 +139,7 @@ u32 get_mario_spawn_type(struct Object *o) {
     const BehaviorScript *behavior = virtual_to_segmented(0x13, o->behavior);
 
     for (i = 0; i < 20; i++) {
-        if (sWarpBhvSpawnTable[i] == behavior) {
+        if (behavior == sWarpBhvSpawnTable[i]) {
             return sSpawnTypeFromWarpBhv[i];
         }
     }
@@ -150,9 +158,9 @@ struct ObjectWarpNode *area_get_warp_node(u8 id) {
 }
 
 struct ObjectWarpNode *area_get_warp_node_from_params(struct Object *o) {
-    u8 sp1F = (o->oBehParams & 0x00FF0000) >> 16;
+    u8 id = (o->oBhvParams & 0x00FF0000) >> 16;
 
-    return area_get_warp_node(sp1F);
+    return area_get_warp_node(id);
 }
 
 void load_obj_warp_nodes(void) {
@@ -193,11 +201,11 @@ void clear_areas(void) {
         gAreaData[i].instantWarps = NULL;
         gAreaData[i].objectSpawnInfos = NULL;
         gAreaData[i].camera = NULL;
-        gAreaData[i].unused28 = NULL;
+        gAreaData[i].unused = NULL;
         gAreaData[i].whirlpools[0] = NULL;
         gAreaData[i].whirlpools[1] = NULL;
-        gAreaData[i].dialog[0] = 255;
-        gAreaData[i].dialog[1] = 255;
+        gAreaData[i].dialog[0] = DIALOG_NONE;
+        gAreaData[i].dialog[1] = DIALOG_NONE;
         gAreaData[i].musicParam = 0;
         gAreaData[i].musicParam2 = 0;
     }
@@ -329,16 +337,14 @@ void play_transition(s16 transType, s16 time, u8 red, u8 green, u8 blue) {
 
         gWarpTransition.data.texTimer = 0;
 
-        if (transType & 1) // Is the image fading in?
-        {
+        if (transType & 1) { // Is the image fading in?
             gWarpTransition.data.startTexRadius = GFX_DIMENSIONS_FULL_RADIUS;
             if (transType >= 0x0F) {
                 gWarpTransition.data.endTexRadius = 16;
             } else {
                 gWarpTransition.data.endTexRadius = 0;
             }
-        } else // The image is fading out. (Reverses start & end circles)
-        {
+        } else { // The image is fading out. (Reverses start & end circles)
             if (transType >= 0x0E) {
                 gWarpTransition.data.startTexRadius = 16;
             } else {
@@ -373,19 +379,20 @@ void render_game(void) {
         render_text_labels();
         do_cutscene_handler();
         print_displaying_credits_entry();
+
         gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                       SCREEN_HEIGHT - BORDER_HEIGHT);
-        gPauseScreenMode = render_menus_and_dialogs();
-
-        if (gPauseScreenMode != 0) {
-            gSaveOptSelectIndex = gPauseScreenMode;
+        gMenuOptSelectIndex = render_menus_and_dialogs();
+        if (gMenuOptSelectIndex != MENU_OPT_NONE) {
+            gSaveOptSelectIndex = gMenuOptSelectIndex;
         }
 
         if (D_8032CE78 != NULL) {
             make_viewport_clip_rect(D_8032CE78);
-        } else
+        } else {
             gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
                           SCREEN_HEIGHT - BORDER_HEIGHT);
+        }
 
         if (gWarpTransition.isActive) {
             if (gWarpTransDelay == 0) {
@@ -407,7 +414,7 @@ void render_game(void) {
         if (D_8032CE78 != NULL) {
             clear_viewport(D_8032CE78, gWarpTransFBSetColor);
         } else {
-            clear_frame_buffer(gWarpTransFBSetColor);
+            clear_framebuffer(gWarpTransFBSetColor);
         }
     }
 

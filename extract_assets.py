@@ -20,6 +20,8 @@ def read_local_asset_list(f):
 
 
 def asset_needs_update(asset, version):
+    if version <= 6 and asset in ["actors/king_bobomb/king_bob-omb_eyes.rgba16.png", "actors/king_bobomb/king_bob-omb_hand.rgba16.png"]:
+        return True
     if version <= 5 and asset == "textures/spooky/bbh_textures.00800.rgba16.png":
         return True
     if version <= 4 and asset in ["textures/mountain/ttm_textures.01800.rgba16.png", "textures/mountain/ttm_textures.05800.rgba16.png"]:
@@ -59,7 +61,7 @@ def clean_assets(local_asset_file):
 def main():
     # In case we ever need to change formats of generated files, we keep a
     # revision ID in the local asset file.
-    new_version = 6
+    new_version = 7
 
     try:
         local_asset_file = open(".assets-local.txt")
@@ -74,7 +76,7 @@ def main():
         clean_assets(local_asset_file)
         sys.exit(0)
 
-    all_langs = ["jp", "us", "eu", "sh"]
+    all_langs = ["jp", "us", "eu", "sh", "cn"]
     if not langs or not all(a in all_langs for a in langs):
         langs_str = " ".join("[" + lang + "]" for lang in all_langs)
         print("Usage: " + sys.argv[0] + " " + langs_str)
@@ -154,7 +156,11 @@ def main():
 
     # Make sure tools exist
     subprocess.check_call(
-        ["make", "-s", "-C", "tools/", "n64graphics", "skyconv", "mio0", "aifc_decode"]
+        ["make", "-s", "-C", "tools/sm64tools/", "n64graphics", "mio0"]
+    )
+
+    subprocess.check_call(
+        ["make", "-s", "-C", "tools/", "skyconv", "aifc_decode"]
     )
 
     # Go through the assets in roughly alphabetical order (but assets in the same
@@ -173,13 +179,14 @@ def main():
                 "baserom." + lang + ".z64",
             ]
             def append_args(key):
-                size, locs = asset_map["@sound " + key + " " + lang]
+                sound_ver = "sh" if lang == "cn" else lang
+                size, locs = asset_map["@sound " + key + " " + sound_ver]
                 offset = locs[lang][0]
                 args.append(str(offset))
                 args.append(str(size))
             append_args("ctl")
             append_args("tbl")
-            if lang == "sh":
+            if lang in ("sh", "cn"):
                 args.append("--shindou-headers")
                 append_args("ctl header")
                 append_args("tbl header")
@@ -193,7 +200,7 @@ def main():
         if mio0 is not None:
             image = subprocess.run(
                 [
-                    "./tools/mio0",
+                    "./tools/sm64tools/mio0",
                     "-d",
                     "-o",
                     str(mio0),
@@ -220,7 +227,8 @@ def main():
                         if asset.startswith("textures/skyboxes/"):
                             imagetype = "sky"
                         else:
-                            imagetype =  "cake" + ("-eu" if "eu" in asset else "")
+                            imagetype = "cake" + ("-cn" if "cn" in asset else "-eu" if "eu" in asset else "")
+                        print(imagetype, png_file.name, asset)
                         subprocess.run(
                             [
                                 "./tools/skyconv",
@@ -237,7 +245,7 @@ def main():
                         fmt = asset.split(".")[-2]
                         subprocess.run(
                             [
-                                "./tools/n64graphics",
+                                "./tools/sm64tools/n64graphics",
                                 "-e",
                                 png_file.name,
                                 "-g",

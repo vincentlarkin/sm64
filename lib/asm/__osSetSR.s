@@ -1,7 +1,6 @@
-.set noreorder # don't insert nops after branches
-.set gp=64
+.set noreorder // don't insert nops after branches
 
-.include "macros.inc"
+#include "macros.inc"
 
 
 .section .text, "ax"

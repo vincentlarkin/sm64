@@ -9,6 +9,7 @@
 #include "profiler.h"
 #include "buffers/buffers.h"
 #include "segments.h"
+#include "segment_symbols.h"
 #include "main.h"
 #include "rumble_init.h"
 
@@ -26,7 +27,7 @@ OSThread gGameLoopThread;
 OSThread gSoundThread;
 
 OSIoMesg gDmaIoMesg;
-OSMesg D_80339BEC;
+OSMesg gMainReceivedMesg;
 
 OSMesgQueue gDmaMesgQueue;
 OSMesgQueue gSIEventMesgQueue;
@@ -50,7 +51,7 @@ struct SPTask *sNextDisplaySPTask = NULL;
 s8 sAudioEnabled = TRUE;
 u32 gNumVblanks = 0;
 s8 gResetTimer = 0;
-s8 D_8032C648 = 0;
+s8 gNmiResetBarsTimer = 0;
 s8 gDebugLevelSelect = FALSE;
 s8 D_8032C650 = 0;
 
@@ -89,6 +90,10 @@ void unknown_main_func(void) {
     // uninitialized
     OSTime time;
     u32 b;
+#ifdef AVOID_UB
+    time = 0;
+    b = 0;
+#endif
 
     osSetTime(time);
     osMapTLB(0, b, NULL, 0, 0, 0);
@@ -137,17 +142,17 @@ void create_thread(OSThread *thread, OSId id, void (*entry)(void *), void *arg, 
     osCreateThread(thread, id, entry, arg, sp, pri);
 }
 
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
 extern void func_sh_802f69cc(void);
 #endif
 
 void handle_nmi_request(void) {
     gResetTimer = 1;
-    D_8032C648 = 0;
+    gNmiResetBarsTimer = 0;
     stop_sounds_in_continuous_banks();
     sound_banks_disable(SEQ_PLAYER_SFX, SOUND_BANKS_BACKGROUND);
     fadeout_music(90);
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
     func_sh_802f69cc();
 #endif
 }
@@ -179,7 +184,7 @@ void receive_new_tasks(void) {
 }
 
 void start_sptask(s32 taskType) {
-    UNUSED s32 pad; // needed to pad the stack
+    UNUSED u8 filler[4];
 
     if (taskType == M_AUDTASK) {
         gActiveSPTask = sCurrentAudioSPTask;
@@ -214,11 +219,11 @@ void pretend_audio_sptask_done(void) {
 }
 
 void handle_vblank(void) {
-    UNUSED s32 pad; // needed to pad the stack
+    UNUSED u8 filler[4];
 
     stub_main_3();
     gNumVblanks++;
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
     if (gResetTimer > 0 && gResetTimer < 100) {
         gResetTimer++;
     }
@@ -253,7 +258,7 @@ void handle_vblank(void) {
             start_sptask(M_GFXTASK);
         }
     }
-#ifdef VERSION_SH
+#if ENABLE_RUMBLE
     rumble_thread_update_vi();
 #endif
 
@@ -386,7 +391,7 @@ void dispatch_audio_sptask(struct SPTask *spTask) {
     }
 }
 
-void send_display_list(struct SPTask *spTask) {
+void exec_display_list(struct SPTask *spTask) {
     if (spTask != NULL) {
         osWritebackDCacheAll();
         spTask->state = SPTASK_STATE_NOT_STARTED;
@@ -415,12 +420,12 @@ void turn_off_audio(void) {
  * Initialize hardware, start main thread, then idle.
  */
 void thread1_idle(UNUSED void *arg) {
-#if defined(VERSION_US) || defined(VERSION_SH)
+#if defined(VERSION_US) || defined(VERSION_SH) || defined(VERSION_CN)
     s32 sp24 = osTvType;
 #endif
 
     osCreateViManager(OS_PRIORITY_VIMGR);
-#if defined(VERSION_US) || defined(VERSION_SH)
+#if defined(VERSION_US) || defined(VERSION_SH) || defined(VERSION_CN)
     if (sp24 == TV_TYPE_NTSC) {
         osViSetMode(&osViModeTable[OS_VI_NTSC_LAN1]);
     } else {
@@ -448,7 +453,7 @@ void thread1_idle(UNUSED void *arg) {
 }
 
 void main_func(void) {
-    UNUSED u8 pad[64]; // needed to pad the stack
+    UNUSED u8 filler[64];
 
     osInitialize();
     stub_main_1();

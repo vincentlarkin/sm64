@@ -1,4 +1,5 @@
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
+
 #include "PR/os_internal.h"
 #include "piint.h"
 
@@ -21,4 +22,5 @@ s32 osEPiStartDma(OSPiHandle *pihandle, OSIoMesg *mb, s32 direction) {
     }
     return ret;
 }
+
 #endif

@@ -1,8 +1,7 @@
-.set noat      # allow manual use of $at
-.set noreorder # don't insert nops after branches
-.set gp=64
+.set noat      // allow manual use of $at
+.set noreorder // don't insert nops after branches
 
-.include "macros.inc"
+#include "macros.inc"
 
 
 .section .text, "ax"
@@ -10,7 +9,7 @@
 glabel __osProbeTLB
     mfc0  $t0, $10
     andi  $t1, $t0, 0xff
-    li    $at, -8192
+    li    $at, 0xFFFFE000
     and   $t2, $a0, $at
     or    $t1, $t1, $t2
     mtc0  $t1, $10
@@ -44,8 +43,8 @@ glabel __osProbeTLB
     andi  $t5, $v0, 2
     beqz  $t5, .L8032A0D8
      nop
-    lui   $at, (0x3FFFFFC0 >> 16) # lui $at, 0x3fff
-    ori   $at, (0x3FFFFFC0 & 0xFFFF) # ori $at, $at, 0xffc0
+    lui   $at, (0x3FFFFFC0 >> 16) // lui $at, 0x3fff
+    ori   $at, (0x3FFFFFC0 & 0xFFFF) // ori $at, $at, 0xffc0
     and   $v0, $v0, $at
     sll   $v0, $v0, 6
     and   $t5, $a0, $t3
@@ -58,7 +57,3 @@ glabel __osProbeTLB
     mtc0  $t0, $10
     jr    $ra
      nop
-
-    nop
-    nop
-

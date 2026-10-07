@@ -36,11 +36,11 @@ extern ALSeqFile *gSeqFileHeader;
 extern u8 *gAlBankSets;
 
 extern struct CtlEntry *gCtlEntries;
-#if defined(VERSION_EU) || defined(VERSION_SH)
+#if defined(VERSION_EU) || defined(VERSION_SH) || defined(VERSION_CN)
 extern struct AudioBufferParametersEU gAudioBufferParameters;
 #endif
 extern s32 gAiFrequency;
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
 extern s16 gCurrAiBufferLength;
 extern s32 D_SH_8034F68C;
 #endif
@@ -53,7 +53,7 @@ extern s16 gTempoInternalToExternal;
 extern s8 gAudioUpdatesPerFrame; // = 4
 extern s8 gSoundMode;
 
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
 extern OSMesgQueue gUnkQueue1;
 
 struct UnkStructSH8034EC88 {
@@ -78,29 +78,36 @@ extern struct UnkStructSH8034EC88 D_SH_8034EC88[0x80];
 
 void audio_dma_partial_copy_async(uintptr_t *devAddr, u8 **vAddr, ssize_t *remaining, OSMesgQueue *queue, OSIoMesg *mesg);
 void decrease_sample_dma_ttls(void);
-#ifdef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
 void *dma_sample_data(uintptr_t devAddr, u32 size, s32 arg2, u8 *dmaIndexRef, s32 medium);
 #else
 void *dma_sample_data(uintptr_t devAddr, u32 size, s32 arg2, u8 *dmaIndexRef);
 #endif
 void init_sample_dma_buffers(s32 arg0);
-#if defined(VERSION_SH)
+#if defined(VERSION_SH) || defined(VERSION_CN)
 void patch_audio_bank(s32 bankId, struct AudioBank *mem, struct PatchStruct *patchInfo);
 #else
 void patch_audio_bank(struct AudioBank *mem, u8 *offset, u32 numInstruments, u32 numDrums);
 #endif
-#ifndef VERSION_SH
+#if defined(VERSION_SH) || defined(VERSION_CN)
+void preload_sequence(u32 seqId, s32 preloadMask);
+#else
 void preload_sequence(u32 seqId, u8 preloadMask);
 #endif
 void load_sequence(u32 player, u32 seqId, s32 loadAsync);
 
-#ifdef VERSION_SH
-void func_sh_802f3158(s32 index, s32 arg1, s32 arg2, OSMesgQueue *retQueue);
-u8 *func_sh_802f3220(u32 index, u32 *a1);
+#if defined(VERSION_SH) || defined(VERSION_CN)
+void func_sh_802f3158(s32 seqId, s32 arg1, s32 arg2, OSMesgQueue *retQueue);
+u8 *func_sh_802f3220(u32 seqId, u32 *a1);
 struct AudioBankSample *func_sh_802f4978(s32 bankId, s32 idx);
-void *func_802f3f08(s32 poolIdx, s32 arg1, s32 arg2, s32 arg3, OSMesgQueue *retQueue);
-s32 func_sh_802f3368(s32 arg0);
+s32 func_sh_802f47c8(s32 bankId, u8 idx, s8 *io);
+void *func_sh_802f3f08(s32 poolIdx, s32 arg1, s32 arg2, s32 arg3, OSMesgQueue *retQueue);
+void func_sh_802f41e4(s32 audioResetStatus);
+BAD_RETURN(s32) func_sh_802f3368(s32 bankId);
 void *func_sh_802f3764(s32 arg0, s32 idx, s32 *arg2);
+s32 func_sh_802f3024(s32 bankId, s32 instId, s32 arg2);
+void func_sh_802f30f4(s32 arg0, s32 arg1, s32 arg2, OSMesgQueue *arg3);
+void func_sh_802f3288(s32 idx);
 
 #endif
 
